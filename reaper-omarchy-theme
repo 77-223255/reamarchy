@@ -1,0 +1,254 @@
+#!/bin/bash
+
+# Keep REAPER's editable UI palette in sync with the active Omarchy theme.
+# Installed as an Omarchy theme-set hook; the theme slug is supplied as $1.
+
+set -euo pipefail
+
+reaper_resource="${REAPER_RESOURCE_PATH:-$HOME/.config/REAPER}"
+omarchy_theme="${OMARCHY_CURRENT_THEME_PATH:-$HOME/.local/state/omarchy/current/theme}"
+colors_file="$omarchy_theme/colors.toml"
+themes_dir="$reaper_resource/ColorThemes"
+output_theme="$themes_dir/Omarchy.ReaperTheme"
+scripts_dir="$reaper_resource/Scripts/Omarchy"
+loader_script="$scripts_dir/load-omarchy-theme.lua"
+reaper_ini="$reaper_resource/reaper.ini"
+
+if [[ ! -f $colors_file ]]; then
+  echo "REAPER Omarchy theme: missing palette: $colors_file" >&2
+  exit 1
+fi
+
+mapfile -d '' -t default_themes < <(
+  find "$themes_dir" -maxdepth 1 -type f -name 'Default_*.ReaperThemeZip' -print0 | sort -zV
+)
+
+if (( ${#default_themes[@]} == 0 )); then
+  echo "REAPER Omarchy theme: no Default_*.ReaperThemeZip found in $themes_dir" >&2
+  exit 1
+fi
+
+base_zip="${default_themes[-1]}"
+# Drain the complete unzip listing. Exiting awk after the first match can send
+# unzip SIGPIPE; with pipefail enabled that aborts the hook on larger archives.
+base_theme=$(unzip -Z1 "$base_zip" | awk '/^[^/]+\.ReaperTheme$/ && !found { print; found = 1 }')
+
+if [[ -z $base_theme ]]; then
+  echo "REAPER Omarchy theme: $base_zip has no root theme definition" >&2
+  exit 1
+fi
+
+declare -A palette
+while IFS=$'\t' read -r key value; do
+  palette[$key]="$value"
+done < <(omarchy-theme-color --file "$colors_file" --all)
+
+for required in background dark_background darker_background lighter_background \
+  foreground dark_foreground bright_foreground accent selection muted red yellow \
+  green cyan blue magenta; do
+  if [[ ! ${palette[$required]:-} =~ ^#[0-9A-Fa-f]{6}$ ]]; then
+    echo "REAPER Omarchy theme: palette color '$required' is missing or invalid" >&2
+    exit 1
+  fi
+done
+
+# REAPER stores colors as Windows COLORREF integers: R + G*256 + B*65536.
+colorref() {
+  local hex="${1#\#}"
+  local r=$((16#${hex:0:2}))
+  local g=$((16#${hex:2:2}))
+  local b=$((16#${hex:4:2}))
+  printf '%d' "$((r + (g << 8) + (b << 16)))"
+}
+
+declare -A c
+for key in "${!palette[@]}"; do
+  if [[ ${palette[$key]} =~ ^#[0-9A-Fa-f]{6}$ ]]; then
+    c[$key]=$(colorref "${palette[$key]}")
+  fi
+done
+
+mkdir -p "$themes_dir" "$scripts_dir"
+tmp_theme=$(mktemp "$themes_dir/.Omarchy.ReaperTheme.XXXXXX")
+trap 'rm -f "$tmp_theme"' EXIT
+
+unzip -p "$base_zip" "$base_theme" | awk \
+  -v background="${c[background]}" \
+  -v dark_background="${c[dark_background]}" \
+  -v darker_background="${c[darker_background]}" \
+  -v lighter_background="${c[lighter_background]}" \
+  -v foreground="${c[foreground]}" \
+  -v dark_foreground="${c[dark_foreground]}" \
+  -v bright_foreground="${c[bright_foreground]}" \
+  -v accent="${c[accent]}" \
+  -v selection="${c[selection]}" \
+  -v muted="${c[muted]}" \
+  -v red="${c[red]}" \
+  -v yellow="${c[yellow]}" \
+  -v green="${c[green]}" \
+  -v cyan="${c[cyan]}" \
+  -v blue="${c[blue]}" \
+  -v magenta="${c[magenta]}" \
+  -v image_zip="$(basename "$base_zip")" '
+  BEGIN {
+    # Main window, transport, toolbars, lists, and dockers.
+    color["col_main_bg2"] = background
+    color["col_main_text2"] = foreground
+    color["col_main_text"] = foreground
+    color["col_main_textshadow"] = darker_background
+    color["col_main_3dhl"] = lighter_background
+    color["col_main_3dsh"] = darker_background
+    color["col_main_resize2"] = accent
+    color["col_transport_editbk"] = darker_background
+    color["col_toolbar_text"] = foreground
+    color["col_toolbar_text_on"] = accent
+    color["col_toolbar_frame"] = muted
+    color["toolbararmed_color"] = accent
+    color["genlist_bg"] = background
+    color["genlist_fg"] = foreground
+    color["genlist_grid"] = muted
+    color["genlist_selbg"] = selection
+    color["genlist_selfg"] = bright_foreground
+    color["genlist_seliabg"] = lighter_background
+    color["genlist_seliafg"] = foreground
+    color["docker_bg"] = background
+    color["docker_shadow"] = darker_background
+    color["docker_selface"] = selection
+    color["docker_unselface"] = lighter_background
+    color["docker_text"] = foreground
+    color["docker_text_sel"] = bright_foreground
+    color["windowtab_bg"] = background
+
+    # Arrange view, track panels, timeline, selections, and cursors.
+    color["col_tcp_text"] = foreground
+    color["col_tcp_textsel"] = bright_foreground
+    color["col_seltrack"] = selection
+    color["tcplocked_color"] = muted
+    color["col_tracklistbg"] = background
+    color["col_mixerbg"] = background
+    color["col_arrangebg"] = background
+    color["arrange_vgrid"] = muted
+    color["col_tl_fg"] = foreground
+    color["col_tl_fg2"] = dark_foreground
+    color["col_tl_bg"] = darker_background
+    color["col_tl_bgsel"] = selection
+    color["col_tl_bgsel2"] = muted
+    color["col_trans_bg"] = background
+    color["col_trans_fg"] = foreground
+    color["col_tr1_bg"] = background
+    color["col_tr2_bg"] = lighter_background
+    color["selcol_tr1_bg"] = selection
+    color["selcol_tr2_bg"] = selection
+    color["col_tr1_divline"] = darker_background
+    color["col_tr2_divline"] = darker_background
+    color["col_cursor"] = accent
+    color["col_cursor2"] = accent
+    color["playcursor_color"] = green
+    color["marquee_outline"] = accent
+    color["areasel_outline"] = accent
+    color["region"] = magenta
+    color["region_lane_bg"] = darker_background
+    color["region_lane_text"] = foreground
+    color["marker"] = yellow
+    color["marker_lane_bg"] = darker_background
+    color["marker_lane_text"] = foreground
+
+    # Items, peaks, meters, routing, and status colors.
+    color["col_tr1_itembgsel"] = selection
+    color["col_tr2_itembgsel"] = selection
+    color["col_tr1_peaks"] = foreground
+    color["col_tr2_peaks"] = bright_foreground
+    color["col_peaksedge"] = dark_foreground
+    color["col_peaksedge2"] = dark_foreground
+    color["col_peaksedgesel"] = accent
+    color["col_peaksedgesel2"] = accent
+    color["col_offlinetext"] = red
+    color["col_routinghl1"] = accent
+    color["col_routinghl2"] = cyan
+    color["col_routingact"] = green
+    color["col_vuclip"] = red
+    color["col_vutop"] = yellow
+    color["col_vumid"] = green
+    color["col_vubot"] = green
+    color["mcp_sends_normal"] = foreground
+    color["mcp_sends_muted"] = dark_foreground
+    color["mcp_send_midihw"] = cyan
+    color["mcp_fx_normal"] = foreground
+    color["mcp_fx_bypassed"] = yellow
+    color["mcp_fx_offlined"] = red
+
+    # MIDI editor and media explorer.
+    color["midi_rulerbg"] = darker_background
+    color["midi_rulerfg"] = foreground
+    color["midi_trackbg1"] = background
+    color["midi_trackbg2"] = lighter_background
+    color["midi_trackbg_outer1"] = darker_background
+    color["midi_trackbg_outer2"] = dark_background
+    color["midi_selpitch1"] = selection
+    color["midi_selpitch2"] = muted
+    color["midi_editcurs"] = accent
+    color["midieditorlist_bg"] = background
+    color["midieditorlist_fg"] = foreground
+    color["midieditorlist_grid"] = muted
+    color["midieditorlist_selbg"] = selection
+    color["midieditorlist_selfg"] = bright_foreground
+    color["col_explorer_sel"] = selection
+    color["explorer_grid"] = muted
+    color["explorer_pitchtext"] = foreground
+
+    # Envelope colors follow the Omarchy semantic palette.
+    color["col_env1"] = accent
+    color["col_env2"] = green
+    color["col_env3"] = red
+    color["col_env4"] = yellow
+    color["col_env5"] = cyan
+    color["col_env6"] = magenta
+  }
+
+  /^col_nodarkmodemiscwnd=/ { print "col_nodarkmodemiscwnd=0"; next }
+  /^ui_img=/ { print "ui_img=" image_zip; next }
+  {
+    split($0, pair, "=")
+    if (pair[1] in color) print pair[1] "=" color[pair[1]]
+    else print
+  }
+' >"$tmp_theme"
+
+mv "$tmp_theme" "$output_theme"
+trap - EXIT
+
+printf '%s\n' \
+  "local theme = [[$output_theme]]" \
+  'if reaper.file_exists(theme) then' \
+  '  reaper.OpenColorThemeFile(theme)' \
+  '  reaper.ThemeLayout_RefreshAll()' \
+  '  reaper.UpdateArrange()' \
+  'end' >"$loader_script"
+
+# When REAPER is closed, select the generated theme for its next launch.
+# When it is open, use the supported ReaScript theme API for an immediate reload;
+# REAPER will persist the chosen theme when it exits.
+if pgrep -x reaper >/dev/null 2>&1; then
+  reaper -nonewinst "$loader_script" >/dev/null 2>&1 &
+elif [[ -f $reaper_ini ]]; then
+  tmp_ini=$(mktemp "$reaper_resource/.reaper.ini.XXXXXX")
+  awk -v theme="$output_theme" '
+    tolower($0) == "[reaper]" {
+      print
+      print "lastthemefn5=" theme
+      inserted = 1
+      next
+    }
+    /^lastthemefn5=/ { next }
+    { print }
+    END {
+      if (!inserted) {
+        print ""
+        print "[reaper]"
+        print "lastthemefn5=" theme
+      }
+    }
+  ' "$reaper_ini" >"$tmp_ini"
+  chmod --reference="$reaper_ini" "$tmp_ini"
+  mv "$tmp_ini" "$reaper_ini"
+fi
