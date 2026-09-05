@@ -237,11 +237,11 @@ fi
 mix_fg() { mix "${palette[background]}" "${palette[foreground]}" "$1"; }
 
 tmp_swell=$(mktemp "$reaper_resource/.libSwell-user.colortheme.XXXXXX")
+cp "$reaper_resource/libSwell-user.colortheme" "$reaper_resource/.libSwell.prev" 2>/dev/null || true
 trap 'rm -f "$tmp_swell"' EXIT
 cat <<EOF >"$tmp_swell"
 # libSwell widget colortheme generated from the active Omarchy palette.
-# Takes effect on REAPER restart.
-_3dface $(mix_fg 10)
+# Takes effect on REAPER restart._3dface $(mix_fg 10)
 _3dshadow $(mix_fg 22)
 _3dhilight $(mix_fg 15)
 _3ddkshadow ${palette[darker_background]}
@@ -330,6 +330,16 @@ transport_group_bg $(mix_fg 12)
 EOF
 mv "$tmp_swell" "$reaper_resource/libSwell-user.colortheme"
 trap - EXIT
+
+# REAPER reads libSwell-user.colortheme at startup only. Notify the user when
+# the generated file changed while REAPER is running, so they know a restart
+# is needed for the new widget colors to apply.
+if [[ -f $reaper_resource/.libSwell.prev ]] \
+  && ! cmp -s "$reaper_resource/.libSwell.prev" "$reaper_resource/libSwell-user.colortheme" \
+  && pgrep -x reaper >/dev/null 2>&1; then
+  notify-send -a Omarchy REAPER 'SWELL widget colors changed; restart REAPER to apply.' 2>/dev/null || true
+fi
+rm -f "$reaper_resource/.libSwell.prev"
 
 printf '%s\n' \
   "local theme = [[$output_theme]]" \
