@@ -1,6 +1,8 @@
-# REAPER ↔ Omarchy 主题联动
+# REAPER ↔ Omarchy theme integration
 
-**用一张截图说话：**
+[English](README_EN.md) | 简体中文
+
+One screenshot first:
 
 <img src="picture/tokyo-night.png" width="80%">
 
@@ -45,6 +47,6 @@ omarchy theme set "$(omarchy theme current)"
 
 ## 致谢
 
-热重载框架来自 [nofatetech/reaper-omarchy-theme](https://github.com/nofatetech/reaper-omarchy-theme)（已提交 [PR #1](https://github.com/nofatetech/reaper-omarchy-theme/pull/1)：SWELL 配色 + 通知）。
+热重载框架来自 [nofatetech/reaper-omarchy-theme](https://github.com/nofatetech/reaper-omarchy-theme)（其中 SWELL 配色与通知部分已作为 [PR #1](https://github.com/nofatetech/reaper-omarchy-theme/pull/1) 回馈上游）。
 
-本仓库的差异：**个人色彩微调方案**——自定义对比度插值 + 中文字体/布局参数硬编码。
+本仓库在其基础上做了一些**个人向调整**：对比度插值参数与中文字体/布局的硬编码，供个人使用，仅供参考。
