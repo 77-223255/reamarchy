@@ -54,5 +54,5 @@ The live-reload framework comes from
 [PR #1](https://github.com/nofatetech/reaper-omarchy-theme/pull/1)).
 
 This fork adds a few **personal tweaks** on top of it: contrast interpolation
-parameters and hardcoded CJK font/layout values. Nothing fancy — it just fits
+parameters and hardcoded font size/layout values. Nothing fancy — it just fits
 my own setup.
