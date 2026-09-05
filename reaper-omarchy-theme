@@ -334,17 +334,8 @@ trap - EXIT
 printf '%s\n' \
   "local theme = [[$output_theme]]" \
   'if reaper.file_exists(theme) then' \
-  "  local sws = reaper.NamedCommandLookup('_S&M_LOAD_THEMEl')" \
-  '  if sws ~= 0 then' \
-  '    -- SWS re-reads the theme file from disk, including bitmap assets;' \
-  '    -- requires the theme to be registered once as an SWS theme resource.' \
-  '    reaper.Main_OnCommand(sws, 0)' \
-  '  else' \
-  '    -- Native reload: colors refresh live, but REAPER caches theme' \
-  '    -- bitmaps, so those only apply on the next launch.' \
-  '    reaper.OpenColorThemeFile(theme)' \
-  '    reaper.ThemeLayout_RefreshAll()' \
-  '  end' \
+  '  reaper.OpenColorThemeFile(theme)' \
+  '  reaper.ThemeLayout_RefreshAll()' \
   '  reaper.UpdateArrange()' \
   'end' >"$loader_script"
 
