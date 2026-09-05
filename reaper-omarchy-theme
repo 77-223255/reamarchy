@@ -217,11 +217,134 @@ unzip -p "$base_zip" "$base_theme" | awk \
 mv "$tmp_theme" "$output_theme"
 trap - EXIT
 
+# Interpolate two #rrggbb colors: mix <a> <b> <percent toward b>.
+mix() {
+  local a="${1#\#}" b="${2#\#}" pct="${3%\%}"
+  local r=$(( 16#${a:0:2} + ((16#${b:0:2} - 16#${a:0:2}) * pct + 50) / 100 ))
+  local g=$(( 16#${a:2:2} + ((16#${b:2:2} - 16#${a:2:2}) * pct + 50) / 100 ))
+  local bl=$(( 16#${a:4:2} + ((16#${b:4:2} - 16#${a:4:2}) * pct + 50) / 100 ))
+  printf '#%02x%02x%02x' "$r" "$g" "$bl"
+}
+
+# Recolor SWELL's native widgets (FX browser tree, filter boxes, menus,
+# device dialogs, ...). REAPER reads libSwell-user.colortheme at startup,
+# so these changes take effect on the next REAPER launch.
+if [[ ${palette[light_foreground]:-} =~ ^#[0-9A-Fa-f]{6}$ ]]; then
+  light_foreground="${palette[light_foreground]}"
+else
+  light_foreground="${palette[bright_foreground]}"
+fi
+mix_fg() { mix "${palette[background]}" "${palette[foreground]}" "$1"; }
+
+tmp_swell=$(mktemp "$reaper_resource/.libSwell-user.colortheme.XXXXXX")
+trap 'rm -f "$tmp_swell"' EXIT
+cat <<EOF >"$tmp_swell"
+# libSwell widget colortheme generated from the active Omarchy palette.
+# Takes effect on REAPER restart.
+_3dface $(mix_fg 10)
+_3dshadow $(mix_fg 22)
+_3dhilight $(mix_fg 15)
+_3ddkshadow ${palette[darker_background]}
+button_text ${palette[foreground]}
+button_text_disabled $(mix_fg 35)
+button_shadow ${palette[darker_background]}
+button_hilight $(mix_fg 15)
+checkbox_text ${palette[foreground]}
+checkbox_text_disabled $(mix_fg 35)
+checkbox_fg ${palette[foreground]}
+checkbox_inter $(mix_fg 30)
+checkbox_bg $(mix_fg 10)
+edit_cursor ${palette[accent]}
+edit_bg ${palette[lighter_background]}
+edit_text ${palette[foreground]}
+edit_text_disabled $(mix_fg 35)
+edit_bg_sel $(mix_fg 25)
+edit_text_sel ${palette[bright_foreground]}
+info_bk $(mix_fg 8)
+info_text ${palette[foreground]}
+menu_bg $(mix_fg 10)
+menu_text ${palette[foreground]}
+menu_text_disabled $(mix_fg 35)
+menu_bg_sel $(mix_fg 25)
+menu_text_sel ${palette[bright_foreground]}
+menu_scroll $(mix_fg 25)
+menu_scroll_arrow $light_foreground
+menu_submenu_arrow $light_foreground
+menubar_bg $(mix_fg 8)
+menubar_text ${palette[foreground]}
+menubar_text_disabled $(mix_fg 35)
+menubar_bg_sel $(mix_fg 25)
+menubar_text_sel ${palette[bright_foreground]}
+trackbar_track $(mix_fg 20)
+trackbar_mark $light_foreground
+trackbar_knob ${palette[bright_foreground]}
+progress ${palette[accent]}
+label_text ${palette[foreground]}
+label_text_disabled $(mix_fg 35)
+combo_text ${palette[foreground]}
+combo_text_disabled $(mix_fg 35)
+combo_bg $(mix_fg 10)
+combo_bg2 $(mix_fg 10)
+combo_shadow ${palette[darker_background]}
+combo_hilight $(mix_fg 25)
+combo_arrow ${palette[foreground]}
+combo_arrow_press ${palette[bright_foreground]}
+listview_bg ${palette[lighter_background]}
+listview_bg_sel $(mix_fg 25)
+listview_text ${palette[foreground]}
+listview_text_sel ${palette[bright_foreground]}
+listview_bg_sel_inactive $(mix_fg 15)
+listview_text_sel_inactive ${palette[foreground]}
+listview_grid $(mix_fg 15)
+listview_hdr_arrow $light_foreground
+listview_hdr_shadow ${palette[darker_background]}
+listview_hdr_hilight $(mix_fg 15)
+listview_hdr_bg $(mix_fg 12)
+listview_hdr_text ${palette[foreground]}
+treeview_bg ${palette[lighter_background]}
+treeview_bg_sel $(mix_fg 25)
+treeview_text ${palette[foreground]}
+treeview_text_sel ${palette[bright_foreground]}
+treeview_bg_sel_inactive $(mix_fg 15)
+treeview_text_sel_inactive ${palette[foreground]}
+treeview_arrow $light_foreground
+tab_shadow ${palette[darker_background]}
+tab_hilight $(mix_fg 25)
+tab_text ${palette[foreground]}
+focusrect ${palette[accent]}
+group_text ${palette[foreground]}
+group_shadow ${palette[darker_background]}
+group_hilight $(mix_fg 15)
+focus_hilight $(mix_fg 20)
+tab_up $(mix_fg 8)
+tab_down $(mix_fg 8)
+tab_up_sel $(mix_fg 22)
+tab_down_sel $(mix_fg 22)
+windowtab_bg $(mix_fg 10)
+scrollbar_2 $(mix_fg 10)
+scrollbar_3 $(mix_fg 15)
+focused ${palette[accent]}
+fxfloat_focus ${palette[accent]}
+transport_edit_bg ${palette[lighter_background]}
+transport_group_bg $(mix_fg 12)
+EOF
+mv "$tmp_swell" "$reaper_resource/libSwell-user.colortheme"
+trap - EXIT
+
 printf '%s\n' \
   "local theme = [[$output_theme]]" \
   'if reaper.file_exists(theme) then' \
-  '  reaper.OpenColorThemeFile(theme)' \
-  '  reaper.ThemeLayout_RefreshAll()' \
+  "  local sws = reaper.NamedCommandLookup('_S&M_LOAD_THEMEl')" \
+  '  if sws ~= 0 then' \
+  '    -- SWS re-reads the theme file from disk, including bitmap assets;' \
+  '    -- requires the theme to be registered once as an SWS theme resource.' \
+  '    reaper.Main_OnCommand(sws, 0)' \
+  '  else' \
+  '    -- Native reload: colors refresh live, but REAPER caches theme' \
+  '    -- bitmaps, so those only apply on the next launch.' \
+  '    reaper.OpenColorThemeFile(theme)' \
+  '    reaper.ThemeLayout_RefreshAll()' \
+  '  end' \
   '  reaper.UpdateArrange()' \
   'end' >"$loader_script"
 
