@@ -1,34 +1,35 @@
 # REAPER ↔ Omarchy theme integration
 
-[English](README_EN.md) | 简体中文
+简体中文版见 [README_ZH.md](README_ZH.md)
 
 One screenshot first:
 
 <img src="picture/tokyo-night.png" width="80%">
 
-## 使用
+## Usage
 
 ```bash
 omarchy hook install theme-set ./reaper-omarchy-theme
 omarchy theme set "$(omarchy theme current)"
 ```
 
-## 原理
+## How it works
 
-读取当前 Omarchy 主题调色板（`colors.toml`），写入 REAPER 的两个**原生接口**：
+The hook reads the active Omarchy palette (`colors.toml`) and writes to two
+**native REAPER interfaces**:
 
-| REAPER 原生接口 | 覆盖范围 | 生效时机 |
+| Native REAPER interface | Covers | Takes effect |
 |---|---|---|
-| `.ReaperTheme`（`col_*` 颜色） | 编辑区 · 走带 · 列表 · MIDI 编辑器 | 切换主题**即时热重载** |
-| `libSwell-user.colortheme` | SWELL 原生控件（FX 浏览器 · 菜单 · 对话框） | 重启 REAPER 生效（会弹通知提醒） |
+| `.ReaperTheme` (`col_*` colors) | Arrange view · Transport · Lists · MIDI editor | Live reload on theme change |
+| `libSwell-user.colortheme` | SWELL native widgets (FX browser · Menus · Dialogs) | On next REAPER launch (a notification reminds you) |
 
-## 生成文件
+## Generated files
 
 - `~/.config/REAPER/ColorThemes/Omarchy.ReaperTheme`
-- `~/.config/REAPER/Scripts/Omarchy/load-omarchy-theme.lua` —— 热重载注入脚本
+- `~/.config/REAPER/Scripts/Omarchy/load-omarchy-theme.lua` — live-reload loader
 - `~/.config/REAPER/libSwell-user.colortheme`
 
-## 效果
+## Screenshots
 
 ### metta-black
 <img src="picture/metta-black.png" width="80%">
@@ -42,11 +43,16 @@ omarchy theme set "$(omarchy theme current)"
 ### vetablack
 <img src="picture/vetablack.png" width="80%">
 
-### SWELL 更新通知
+### SWELL update notification
 <img src="picture/notification.png" width="40%">
 
-## 致谢
+## Credits
 
-热重载框架来自 [nofatetech/reaper-omarchy-theme](https://github.com/nofatetech/reaper-omarchy-theme)（其中 SWELL 配色与通知部分已作为 [PR #1](https://github.com/nofatetech/reaper-omarchy-theme/pull/1) 回馈上游）。
+The live-reload framework comes from
+[nofatetech/reaper-omarchy-theme](https://github.com/nofatetech/reaper-omarchy-theme)
+(the SWELL coloring and the notification part were contributed upstream as
+[PR #1](https://github.com/nofatetech/reaper-omarchy-theme/pull/1)).
 
-本仓库在其基础上做了一些**个人向调整**：对比度插值参数与中文字体/布局的硬编码，供个人使用，仅供参考。
+This fork adds a few **personal tweaks** on top of it: contrast interpolation
+parameters and hardcoded font size/layout values. Nothing fancy — it just fits
+my own setup.
