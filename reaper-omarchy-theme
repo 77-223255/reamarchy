@@ -241,7 +241,17 @@ cp "$reaper_resource/libSwell-user.colortheme" "$reaper_resource/.libSwell.prev"
 trap 'rm -f "$tmp_swell"' EXIT
 cat <<EOF >"$tmp_swell"
 # libSwell widget colortheme generated from the active Omarchy palette.
-# Takes effect on REAPER restart._3dface $(mix_fg 10)
+# Personal look-and-feel (fonts / layout metrics) + palette colors.
+# Takes effect on REAPER restart.
+default_font_face Noto Sans CJK SC
+default_font_size 13
+menubar_height 17
+menubar_font_size 12
+menubar_spacing_width 8
+menubar_margin_width 6
+scrollbar_width 14
+scrollbar_min_thumb_height 4
+combo_height 20_3dface $(mix_fg 10)
 _3dshadow $(mix_fg 22)
 _3dhilight $(mix_fg 15)
 _3ddkshadow ${palette[darker_background]}
