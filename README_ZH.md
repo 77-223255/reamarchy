@@ -1,6 +1,6 @@
 # REAPER ↔ Omarchy 主题联动
 
-One screenshot first:
+先上图：
 
 <img src="picture/tokyo-night.png" width="80%">
 
