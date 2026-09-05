@@ -1,8 +1,5 @@
 # REAPER ↔ Omarchy theme integration
-
-简体中文版见 [README_ZH.md](README_ZH.md)
-
-One screenshot first:
+[简体中文](README_ZH.md)
 
 <img src="picture/tokyo-night.png" width="80%">
 
